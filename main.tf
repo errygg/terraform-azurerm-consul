@@ -228,7 +228,7 @@ resource "azurerm_virtual_machine" "consul" {
     inline = [
       "sudo apt-get update",
       "sudo apt-get install -y unzip",
-      "sudo mkdir -p ${var.data_directory}"
+      "mkdir -p ${var.data_directory}"
     ]
     connection {
       type        = "ssh"
@@ -238,9 +238,9 @@ resource "azurerm_virtual_machine" "consul" {
 
   provisioner "remote-exec" {
     inline = [
-      "curl \"${var.binary_uri}/${var.binary_filename}\" --output ${var.config_destination_dir}/consul.zip",
+      "curl ${var.binary_uri}/${var.binary_filename} --output ${var.config_destination_dir}/consul.zip",
       "unzip ${var.config_destination_dir}/consul.zip -d ${var.config_destination_dir}",
-      "${var.config_destination_dir}/consul agent -config-file=${var.config_destination_dir}/consul.json"
+      "${var.config_destination_dir}/consul agent -config-file=${var.config_destination_dir}/consul.json > ${var.config_destination_dir}/consul.log 2>&1 &"
     ]
     connection {
       type        = "ssh"
