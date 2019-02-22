@@ -1,11 +1,49 @@
-variable "consul_subnet" {
-  description = "Subnet CIDR for PTFE"
-  default     = "10.0.0.0/24"
+variable "advertise_addr" {
+  description = "Address that other nodes in the cluster use to gossip"
+  default     = "0.0.0.0"
+}
+
+variable "binary_filename" {
+
+}
+
+variable "binary_uri" {
+
+}
+
+variable "bootstrap_expect" {
+  description = "Number of running Consul servers to expect"
+  default     = 1
+}
+
+variable "client_addr" {
+  description = "Address for the Consul server to bind to"
+  default     = "127.0.0.1"
+}
+
+variable "config_destination_dir" {
+  description = "Destination directory for the Consul server configuration file"
+  default     = "/home/ubuntu"
+}
+
+variable "datacenter" {
+  description = "Datacenter that the Consul server is running in"
+  default     = "dc1"
+}
+
+variable "data_directory" {
+  description = "Directory to store the Consul data"
+  default     = "/home/ubuntu/consul_data"
 }
 
 variable "location" {
   description = "Location (Region) of Azure"
   default     = "westus"
+}
+
+variable "log_level" {
+  description = "Logging level for the Consul server"
+  default     = "INFO"
 }
 
 # Required
@@ -16,6 +54,11 @@ variable "namespace" {
 variable "network_space" {
   description = "Virtual network address space"
   default     = "10.0.0.0/16"
+}
+
+variable "node_name" {
+  description = "Consul server node name"
+  default     = "consul-server"
 }
 
 variable "public_ip_name" {
@@ -33,12 +76,12 @@ variable "subnet_name" {
   default     = "consul-subnet"
 }
 
+variable "subnet" {
+  description = "Subnet CIDR for PTFE"
+  default     = "10.0.0.0/24"
+}
+
 variable "virtual_network_name" {
   description = "Name of the main Virtual Network to place all of the Azure resources"
   default     = "consul-virtual-network"
 }
-
-
-
-
-

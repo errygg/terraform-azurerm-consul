@@ -20,7 +20,7 @@ resource "azurerm_subnet" "consul" {
   name                 = "${var.subnet_name}"
   virtual_network_name = "${azurerm_virtual_network.consul.name}"
   resource_group_name  = "${azurerm_resource_group.consul.name}"
-  address_prefix       = "${var.consul_subnet}"
+  address_prefix       = "${var.subnet}"
 }
 
 resource "azurerm_public_ip" "consul" {
@@ -213,5 +213,51 @@ resource "azurerm_virtual_machine" "consul" {
       path     = "/home/ubuntu/.ssh/authorized_keys"
       key_data = "${file(var.ssh_key_file)}"
     }
+  }
+
+  provisioner "file" {
+    content     = "${data.template_file.config.rendered}"
+    destination = "${var.config_destination_dir}/consul.json"
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+    }
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-get update",
+      "sudo apt-get install -y unzip",
+      "sudo mkdir -p ${var.data_directory}"
+    ]
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+    }
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "curl \"${var.binary_uri}/${var.binary_filename}\" --output ${var.config_destination_dir}/consul.zip",
+      "unzip ${var.config_destination_dir}/consul.zip -d ${var.config_destination_dir}",
+      "${var.config_destination_dir}/consul agent -config-file=${var.config_destination_dir}/consul.json"
+    ]
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+    }
+  }
+}
+
+data "template_file" "config" {
+  template = "${file("${path.module}/templates/consul.json.tpl")}"
+  vars = {
+    datacenter       = "${var.datacenter}"
+    data_directory   = "${var.data_directory}"
+    log_level        = "${var.log_level}"
+    node_name        = "${var.node_name}"
+    advertise_addr   = "${var.advertise_addr}"
+    client_addr      = "${var.client_addr}"
+    bootstrap_expect = "${var.bootstrap_expect}"
   }
 }
