@@ -30,6 +30,13 @@ resource "azurerm_public_ip" "consul" {
   allocation_method   = "Static" # Case Sensitive
 }
 
+resource "azurerm_public_ip" "consul_agent" {
+  name                = "${var.public_ip_name}"
+  location            = "${var.location}"
+  resource_group_name = "${azurerm_resource_group.consul.name}"
+  allocation_method   = "Static" # Case Sensitive
+}
+
 resource "azurerm_network_security_group" "consul" {
   name                = "consul-network-security-group"
   location            = "${var.location}"
@@ -176,6 +183,20 @@ resource "azurerm_network_interface" "consul" {
   }
 }
 
+resource "azurerm_network_interface" "consul-agent" {
+  name                      = "consul-agent-network-interface"
+  location                  = "${var.location}"
+  resource_group_name       = "${azurerm_resource_group.consul.name}"
+  network_security_group_id = "${azurerm_network_security_group.consul.id}"
+
+  ip_configuration {
+    name                          = "consul-agent-public-ip-configuration"
+    subnet_id                     = "${azurerm_subnet.consul.id}"
+    private_ip_address_allocation = "dynamic"
+    public_ip_address_id          = "${azurerm_public_ip.consul_agent.id}"
+  }
+}
+
 resource "azurerm_virtual_machine" "consul" {
   name                             = "consul-virtual-machine"
   location                         = "${var.location}"
@@ -240,11 +261,52 @@ resource "azurerm_virtual_machine" "consul" {
     inline = [
       "curl ${var.binary_uri}/${var.binary_filename} --output ${var.config_destination_dir}/consul.zip",
       "unzip ${var.config_destination_dir}/consul.zip -d ${var.config_destination_dir}",
-      "${var.config_destination_dir}/consul agent -config-file=${var.config_destination_dir}/consul.json > ${var.config_destination_dir}/consul.log 2>&1 &"
+      "nohup ${var.config_destination_dir}/consul agent -config-file=${var.config_destination_dir}/consul.json > ${var.config_destination_dir}/consul.log 2>&1 &",
+      "sleep 1"
     ]
     connection {
       type        = "ssh"
       user        = "ubuntu"
+    }
+  }
+}
+
+resource "azurerm_virtual_machine" "consul-agent" {
+  name                             = "consul-agent-virtual-machine"
+  location                         = "${var.location}"
+  resource_group_name              = "${azurerm_resource_group.consul.name}"
+  network_interface_ids            = ["${azurerm_network_interface.consul.id}"]
+  vm_size                          = "standard_e4s_v3"
+  delete_os_disk_on_termination    = true
+  delete_data_disks_on_termination = true
+
+  storage_image_reference {
+    publisher = "Canonical" # Case Sensitive
+    offer     = "UbuntuServer" # Case Sensitive
+    sku       = "16.04-LTS" # Case Sensitive
+    version   = "latest"
+  }
+
+  storage_os_disk {
+    name              = "consul-disk-1"
+    caching           = "ReadWrite" # Case Sensitive
+    create_option     = "fromimage"
+    managed_disk_type = "Standard_LRS" # Case Sensitive
+    disk_size_gb      = 100
+  }
+
+  os_profile {
+    computer_name  = "consul"
+    admin_username = "ubuntu" # root is not allowed
+    admin_password = "ubuntu"
+  }
+
+  os_profile_linux_config {
+    disable_password_authentication = true
+
+    ssh_keys {
+      path     = "/home/ubuntu/.ssh/authorized_keys"
+      key_data = "${file(var.ssh_key_file)}"
     }
   }
 }
